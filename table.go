@@ -148,23 +148,6 @@ func parseTag(str string) *tag {
 	return &t
 }
 
-func shouldUseSubTable(v reflect.Value) bool {
-	switch v.Kind() {
-	case reflect.Slice:
-		if v.Len() == 0 {
-			return false
-		}
-		firstObj := v.Index(0)
-		return firstObj.Kind() == reflect.Struct || firstObj.Kind() == reflect.Ptr && firstObj.Elem().Kind() == reflect.Struct
-	case reflect.Struct:
-		return true
-	case reflect.Ptr:
-		return v.Elem().Kind() == reflect.Struct
-	default:
-		return false
-	}
-}
-
 // Converts any type to a slice of struct
 // Supported input types:
 // - []struct

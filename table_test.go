@@ -113,7 +113,7 @@ func TestToSlice(t *testing.T) {
 			}}, len: 1,
 		},
 		{
-			v: []*Child{&Child{
+			v: []*Child{{
 				Key:   "a",
 				Value: "B",
 			}}, len: 1,
