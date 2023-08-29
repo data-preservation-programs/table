@@ -15,6 +15,7 @@ type Table struct {
 	headerRowColor   *color.Color
 	firstColumnColor *color.Color
 	padding          int
+	verbose          bool
 }
 
 type Option func(*Table)
@@ -22,6 +23,12 @@ type Option func(*Table)
 func WithTab(p string) Option {
 	return func(t *Table) {
 		t.tab = p
+	}
+}
+
+func WithVerbose() Option {
+	return func(t *Table) {
+		t.verbose = true
 	}
 }
 
@@ -220,8 +227,8 @@ func toSlice(v any) (any, reflect.Type) {
 	}
 }
 
-func (t *Table) Render(v any, verbose bool) string {
-	table := t.toTable(v, "", nil, verbose)
+func (t *Table) Render(v any) string {
+	table := t.toTable(v, "", nil)
 	return t.render(table, 0)
 }
 
@@ -279,7 +286,7 @@ func (t *Table) render(table *table, depth int) string {
 	return sb.String()
 }
 
-func (t *Table) toTable(v any, name string, nameColor *color.Color, verbose bool) *table {
+func (t *Table) toTable(v any, name string, nameColor *color.Color) *table {
 	slice, objType := toSlice(v)
 	sliceValue := reflect.ValueOf(slice)
 	if sliceValue.Len() == 0 {
@@ -296,7 +303,7 @@ func (t *Table) toTable(v any, name string, nameColor *color.Color, verbose bool
 			header = append(header, nil)
 			continue
 		}
-		if tag.verbose && !verbose {
+		if tag.verbose && !t.verbose {
 			tags = append(tags, tag)
 			header = append(header, nil)
 			continue
@@ -328,14 +335,14 @@ func (t *Table) toTable(v any, name string, nameColor *color.Color, verbose bool
 		var cells []*cell
 		var subTables []table
 		for j := 0; j < objType.NumField(); j++ {
-			if tags[j].ignore || tags[j].verbose && !verbose {
+			if tags[j].ignore || tags[j].verbose && !t.verbose {
 				cells = append(cells, nil)
 				continue
 			}
 			tag := tags[j]
 			field := objValue.Elem().Field(j)
 			if tag.expand {
-				subTable := t.toTable(field.Interface(), tag.header, tag.headerColor, verbose)
+				subTable := t.toTable(field.Interface(), tag.header, tag.headerColor)
 				subTables = append(subTables, *subTable)
 				cells = append(cells, nil)
 				continue

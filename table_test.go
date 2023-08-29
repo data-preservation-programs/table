@@ -63,10 +63,10 @@ func TestRender(t *testing.T) {
 		},
 	}
 
-	table := New().toTable(p, "", nil, true)
+	table := New().toTable(p, "", nil)
 	require.NotNil(t, table)
 
-	str := New().Render([]Parent{p, p}, true)
+	str := New().Render([]Parent{p, p})
 	fmt.Println(str)
 }
 
@@ -188,6 +188,6 @@ func TestDemo(*testing.T) {
 			},
 		},
 	}
-	str := New().Render(people, true)
+	str := New().Render(people)
 	fmt.Println(str)
 }
