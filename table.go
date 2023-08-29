@@ -38,6 +38,12 @@ func WithHeaderRowColor(c *color.Color) Option {
 	}
 }
 
+func WithFirstColumnColor(c *color.Color) Option {
+	return func(t *Table) {
+		t.firstColumnColor = c
+	}
+}
+
 func WithPaddingSize(p int) Option {
 	return func(t *Table) {
 		t.padding = p

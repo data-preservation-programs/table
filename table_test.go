@@ -66,7 +66,7 @@ func TestRender(t *testing.T) {
 	table := New().toTable(p, "", nil)
 	require.NotNil(t, table)
 
-	str := New().Render([]Parent{p, p})
+	str := New(WithVerbose(), WithTab("  "), WithPaddingSize(2), WithFirstColumnColor(nil), WithHeaderRowColor(nil)).Render([]Parent{p, p})
 	fmt.Println(str)
 }
 
