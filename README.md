@@ -2,6 +2,7 @@
 [![codecov](https://codecov.io/github/data-preservation-programs/table/branch/main/graph/badge.svg?token=1A3BMQU3LM)](https://codecov.io/github/data-preservation-programs/table)
 [![Go Report Card](https://goreportcard.com/badge/github.com/data-preservation-programs/table)](https://goreportcard.com/report/github.com/data-preservation-programs/table)
 [![Go Reference](https://pkg.go.dev/badge/github.com/data-preservation-programs/table.svg)](https://pkg.go.dev/github.com/data-preservation-programs/table)
+[![Go](https://github.com/data-preservation-programs/table/actions/workflows/go.yml/badge.svg)](https://github.com/data-preservation-programs/table/actions/workflows/go.yml)
 
 A simple library to create nested tables in the terminal.
 
