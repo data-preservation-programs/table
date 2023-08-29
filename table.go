@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cockroachdb/errors"
 	"github.com/fatih/color"
 )
 
@@ -83,12 +82,10 @@ type tag struct {
 	expand      bool
 }
 
-var ErrInvalidTag = errors.New("invalid tag")
-
-func parseTag(str string) (*tag, error) {
+func parseTag(str string) *tag {
 	t := tag{}
 	if str == "" {
-		return &t, nil
+		return &t
 	}
 	for _, s := range strings.Split(str, ";") {
 		if s == "-" {
@@ -105,7 +102,7 @@ func parseTag(str string) (*tag, error) {
 		}
 		i := strings.IndexAny(s, ":")
 		if i == -1 {
-			return nil, errors.Wrapf(ErrInvalidTag, "'%s' should contain :", s)
+			return &tag{ignore: true}
 		}
 		key := s[:i]
 		value := s[i+1:]
@@ -117,7 +114,7 @@ func parseTag(str string) (*tag, error) {
 			for _, c := range strings.Split(value, ",") {
 				attr, err := strconv.Atoi(c)
 				if err != nil {
-					return nil, errors.Wrapf(ErrInvalidTag, "'%s' is not int", c)
+					return &tag{ignore: true}
 				}
 				attributes = append(attributes, color.Attribute(attr))
 			}
@@ -127,7 +124,7 @@ func parseTag(str string) (*tag, error) {
 			for _, c := range strings.Split(value, ",") {
 				attr, err := strconv.Atoi(c)
 				if err != nil {
-					return nil, errors.Wrapf(ErrInvalidTag, "'%s' is not int", c)
+					return &tag{ignore: true}
 				}
 				attributes = append(attributes, color.Attribute(attr))
 			}
@@ -135,10 +132,10 @@ func parseTag(str string) (*tag, error) {
 		case "format":
 			t.format = value
 		default:
-			return nil, errors.Wrapf(ErrInvalidTag, "unrecognized tag %s", s)
+			return &tag{ignore: true}
 		}
 	}
-	return &t, nil
+	return &t
 }
 
 func shouldUseSubTable(v reflect.Value) bool {
@@ -166,9 +163,9 @@ func shouldUseSubTable(v reflect.Value) bool {
 // - struct
 // - *struct
 // The output is guaranteed to be a slice of struct: []struct
-func toSlice(v any) (any, reflect.Type, error) {
+func toSlice(v any) (any, reflect.Type) {
 	if v == nil {
-		return []struct{}{}, reflect.TypeOf(struct{}{}), nil
+		return []struct{}{}, reflect.TypeOf(struct{}{})
 	}
 
 	value := reflect.ValueOf(v)
@@ -176,7 +173,7 @@ func toSlice(v any) (any, reflect.Type, error) {
 	case reflect.Slice:
 		length := value.Len()
 		if length == 0 {
-			return []struct{}{}, reflect.TypeOf(struct{}{}), nil
+			return []struct{}{}, reflect.TypeOf(struct{}{})
 		}
 		slice := make([]any, length)
 		var objType reflect.Type
@@ -185,12 +182,12 @@ func toSlice(v any) (any, reflect.Type, error) {
 			case reflect.Ptr:
 				elemType := value.Index(i).Elem().Type()
 				if elemType.Kind() != reflect.Struct {
-					return nil, nil, errors.Errorf("unsupported type %s", objType.Kind())
+					return []struct{}{}, reflect.TypeOf(struct{}{})
 				}
 				if objType == nil {
 					objType = elemType
 				} else if objType != elemType {
-					return nil, nil, errors.Errorf("mismatched types %s and %s", objType.Kind(), elemType.Kind())
+					return []struct{}{}, reflect.TypeOf(struct{}{})
 				}
 				slice[i] = value.Index(i).Elem().Interface()
 			case reflect.Struct:
@@ -198,34 +195,31 @@ func toSlice(v any) (any, reflect.Type, error) {
 				if objType == nil {
 					objType = elemType
 				} else if objType != elemType {
-					return nil, nil, errors.Errorf("mismatched types %s and %s", objType.Kind(), elemType.Kind())
+					return []struct{}{}, reflect.TypeOf(struct{}{})
 				}
 				slice[i] = value.Index(i).Interface()
 			}
 		}
-		return slice, objType, nil
+		return slice, objType
 	case reflect.Struct:
-		return []any{v}, value.Type(), nil
+		return []any{v}, value.Type()
 	case reflect.Ptr:
 		if value.IsNil() {
-			return []struct{}{}, reflect.TypeOf(struct{}{}), nil
+			return []struct{}{}, reflect.TypeOf(struct{}{})
 		}
 		referenced := value.Elem()
 		if referenced.Type().Kind() != reflect.Struct {
-			return nil, nil, errors.Errorf("unsupported type %s", value.Kind())
+			return []struct{}{}, reflect.TypeOf(struct{}{})
 		}
-		return []any{referenced.Interface()}, referenced.Type(), nil
+		return []any{referenced.Interface()}, referenced.Type()
 	default:
-		return nil, nil, errors.Errorf("unsupported type %s", value.Kind())
+		return []struct{}{}, reflect.TypeOf(struct{}{})
 	}
 }
 
-func (t *Table) Render(v any, verbose bool) (string, error) {
-	table, err := t.toTable(v, "", nil, verbose)
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
-	return t.render(table, 0), nil
+func (t *Table) Render(v any, verbose bool) string {
+	table := t.toTable(v, "", nil, verbose)
+	return t.render(table, 0)
 }
 
 func (t *Table) render(table *table, depth int) string {
@@ -282,24 +276,18 @@ func (t *Table) render(table *table, depth int) string {
 	return sb.String()
 }
 
-func (t *Table) toTable(v any, name string, nameColor *color.Color, verbose bool) (*table, error) {
-	slice, objType, err := toSlice(v)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
+func (t *Table) toTable(v any, name string, nameColor *color.Color, verbose bool) *table {
+	slice, objType := toSlice(v)
 	sliceValue := reflect.ValueOf(slice)
 	if sliceValue.Len() == 0 {
-		return &table{name: name, nameColor: nameColor}, nil
+		return &table{name: name, nameColor: nameColor}
 	}
 	var tags []*tag
 	var firstSet bool
 	var header headerRow
 	for i := 0; i < objType.NumField(); i++ {
 		field := objType.Field(i)
-		tag, err := parseTag(field.Tag.Get("table"))
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
+		tag := parseTag(field.Tag.Get("table"))
 		if tag.ignore {
 			tags = append(tags, tag)
 			header = append(header, nil)
@@ -344,10 +332,7 @@ func (t *Table) toTable(v any, name string, nameColor *color.Color, verbose bool
 			tag := tags[j]
 			field := objValue.Elem().Field(j)
 			if tag.expand {
-				subTable, err := t.toTable(field.Interface(), tag.header, tag.headerColor, verbose)
-				if err != nil {
-					return nil, errors.WithStack(err)
-				}
+				subTable := t.toTable(field.Interface(), tag.header, tag.headerColor, verbose)
 				subTables = append(subTables, *subTable)
 				cells = append(cells, nil)
 				continue
@@ -370,5 +355,5 @@ func (t *Table) toTable(v any, name string, nameColor *color.Color, verbose bool
 		name:   name,
 		header: header,
 		data:   data,
-	}, nil
+	}
 }
