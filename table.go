@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/fatih/color"
 )
@@ -83,7 +84,9 @@ type tag struct {
 }
 
 func parseTag(str string) *tag {
-	t := tag{}
+	t := tag{
+		format: "%v",
+	}
 	if str == "" {
 		return &t
 	}
@@ -225,7 +228,7 @@ func (t *Table) Render(v any, verbose bool) string {
 func (t *Table) render(table *table, depth int) string {
 	var sb strings.Builder
 	if table.name != "" {
-		for i := 0; i < depth; i++ {
+		for i := 0; i < 2*depth-1; i++ {
 			sb.WriteString(t.tab)
 		}
 		name := table.name
@@ -236,7 +239,7 @@ func (t *Table) render(table *table, depth int) string {
 		sb.WriteString("\n")
 	}
 	if len(table.header) > 0 {
-		for i := 0; i < depth; i++ {
+		for i := 0; i < 2*depth; i++ {
 			sb.WriteString(t.tab)
 		}
 		for _, h := range table.header {
@@ -253,7 +256,7 @@ func (t *Table) render(table *table, depth int) string {
 		sb.WriteString("\n")
 	}
 	for _, row := range table.data {
-		for i := 0; i < depth; i++ {
+		for i := 0; i < 2*depth; i++ {
 			sb.WriteString(t.tab)
 		}
 		for i, cell := range row.cells {
@@ -340,7 +343,11 @@ func (t *Table) toTable(v any, name string, nameColor *color.Color, verbose bool
 			cell := cell{
 				color: tag.color,
 			}
-			cell.value = fmt.Sprint(field.Interface())
+			if tm, ok := field.Interface().(time.Time); ok {
+				cell.value = tm.Format(tag.format)
+			} else {
+				cell.value = fmt.Sprintf(tag.format, field.Interface())
+			}
 			if header[j].width < len(cell.value) {
 				header[j].width = len(cell.value)
 			}
@@ -352,8 +359,9 @@ func (t *Table) toTable(v any, name string, nameColor *color.Color, verbose bool
 		})
 	}
 	return &table{
-		name:   name,
-		header: header,
-		data:   data,
+		name:      name,
+		nameColor: nameColor,
+		header:    header,
+		data:      data,
 	}
 }

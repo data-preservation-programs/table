@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/stretchr/testify/require"
@@ -62,18 +63,15 @@ func TestRender(t *testing.T) {
 		},
 	}
 
-	table, err := New().toTable(p, "", nil, true)
-	require.NoError(t, err)
+	table := New().toTable(p, "", nil, true)
 	require.NotNil(t, table)
 
-	str, err := New().Render([]Parent{p, p}, true)
-	require.NoError(t, err)
+	str := New().Render([]Parent{p, p}, true)
 	fmt.Println(str)
 }
 
 func TestParseTag(t *testing.T) {
-	tag, err := parseTag("header:header_name;headerColor:31,4;color:32;verbose;format:%d")
-	require.NoError(t, err)
+	tag := parseTag("header:header_name;headerColor:31,4;color:32;verbose;format:%d")
 	require.False(t, tag.ignore)
 	require.Equal(t, "header_name", tag.header)
 	require.Equal(t, "%d", tag.format)
@@ -130,10 +128,66 @@ func TestToSlice(t *testing.T) {
 
 	for i, test := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			result, _, err := toSlice(test.v)
-			require.NoError(t, err)
+			result, _ := toSlice(test.v)
 			resultLen := reflect.ValueOf(result).Len()
 			require.Equal(t, test.len, resultLen)
 		})
 	}
+}
+
+type Person struct {
+	ID           int
+	Name         string
+	AverageScore int     `table:"header:Average Score"`
+	Grade        string  `table:"color:96;headerColor:96,4"`
+	Scores       []Score `table:"headerColor:34,4;expand"`
+}
+
+type Score struct {
+	Subject  string
+	Score    float32
+	GradedAt time.Time `table:"header:Graded At;format:2006-01-02"`
+}
+
+func TestDemo(*testing.T) {
+	people := []Person{
+		{
+			ID:           1,
+			Name:         "John",
+			AverageScore: 85,
+			Grade:        "A",
+			Scores: []Score{
+				{
+					Subject:  "Math",
+					Score:    90,
+					GradedAt: time.Now(),
+				},
+				{
+					Subject:  "Science",
+					Score:    80,
+					GradedAt: time.Now(),
+				},
+			},
+		},
+		{
+			ID:           2,
+			Name:         "Joe",
+			AverageScore: 75,
+			Grade:        "B",
+			Scores: []Score{
+				{
+					Subject:  "Math",
+					Score:    80,
+					GradedAt: time.Now(),
+				},
+				{
+					Subject:  "Science",
+					Score:    70,
+					GradedAt: time.Now(),
+				},
+			},
+		},
+	}
+	str := New().Render(people, true)
+	fmt.Println(str)
 }
