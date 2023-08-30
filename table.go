@@ -268,6 +268,9 @@ func (t *Table) render(table *table, depth int) string {
 		}
 		sb.WriteString("\n")
 		for _, subTable := range row.subTables {
+			if len(subTable.data) == 0 {
+				continue
+			}
 			content := t.render(&subTable, depth+1)
 			sb.WriteString(content)
 		}
@@ -286,6 +289,11 @@ func (t *Table) toTable(v any, name string, nameColor *color.Color) *table {
 	var header headerRow
 	for i := 0; i < objType.NumField(); i++ {
 		field := objType.Field(i)
+		if !field.IsExported() {
+			tags = append(tags, &tag{ignore: true})
+			header = append(header, nil)
+			continue
+		}
 		tag := parseTag(field.Tag.Get("table"))
 		if tag.ignore {
 			tags = append(tags, tag)
@@ -339,8 +347,12 @@ func (t *Table) toTable(v any, name string, nameColor *color.Color) *table {
 			cell := cell{
 				color: tag.color,
 			}
-			if tm, ok := field.Interface().(time.Time); ok {
+			if tm, ok := field.Interface().(time.Time); ok && !strings.HasPrefix(tag.format, "%") {
 				cell.value = tm.Format(tag.format)
+			} else if field.Kind() == reflect.Ptr && field.IsNil() {
+				cell.value = "<nil>"
+			} else if field.Kind() == reflect.Ptr {
+				cell.value = fmt.Sprintf(tag.format, field.Elem().Interface())
 			} else {
 				cell.value = fmt.Sprintf(tag.format, field.Interface())
 			}
